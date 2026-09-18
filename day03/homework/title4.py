@@ -1,0 +1,48 @@
+"""
+    4. 题目4：学生管理系统模拟
+"""
+
+students = (
+    ("S001", "王林", {"语文", "数学", "英语", "历史"}),
+    ("S002", "李慕婉", {"数学", "物理"}),
+    ("S003", "司徒南", {"语文", "英语", "历史"}),
+    ("S004", "柳眉", {"数学", "英语", "物理"}),
+    ("S005", "周佚", {"语文", "数学", "化学", "历史"}),
+    ("S006", "清水仙君", {"语文", "数学", "AI", "日语"}),
+    ("S007", "红蝶", {"英语", "数学", "日语"}),
+    ("S008", "徐立国", {"语文", "英语", "历史"}),
+    ("S009", "许立国", {"语文", "历史", "AI"}),
+    ("S010", "藤化元", {"语文", "英语", "化学", "韩语"})
+)
+hot_courses = {"数学", "英语", "物理"}
+#
+# 请依次完成以下操作（不使用函数）：
+# 1. 使用元组解包遍历所有学生，输出每个学生的学号、姓名和所选课程
+for sid, name, courses in students:
+    print(f"学号: {sid}, 姓名: {name}, 选修课程: {courses}")
+
+# 2. 求出所有学生选过的全部课程集合 all_courses
+all_courses = set()
+for sid, name, co in students:
+    all_courses = all_courses | co
+
+print(f"所有学生选过的全部课程集合: {all_courses}")
+
+# 3. 计算每个学生的总学分（每门课 3 学分）, 并输出(形式: "xxx 选修了 xxx 课程, 总学分 xxx 分")
+for sid, name, courses in students:
+    total_score = len(courses) * 3
+    print(f"学生: {name}, 选修课程: {courses}, 总学分: {total_score}")
+
+# 4. 找出所选课程中至少包含 2 门热门课程的学生
+for sid, name, courses in students:
+    hot_count = len(hot_courses & courses)
+    if hot_count >= 2:
+        print(f"学生: {name}, 选修课程: {courses}, 热门课程数: {hot_count}")
+
+print("- " * 50)
+
+# 5. 找出选了"数学"但没选"物理"的学生姓名
+for sid, name, courses in students:
+    if "数学" in courses and "物理" not in courses:
+        print(f"学生: {name}, 选修课程: {courses}")
+

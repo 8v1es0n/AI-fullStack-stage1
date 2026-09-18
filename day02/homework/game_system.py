@@ -15,8 +15,8 @@
 +-----------------------+-------------------------+
 """
 # 定义英雄坐标x, y
-hero_x = 80
-hero_y = 14
+hero_x = 50
+hero_y = 12
 
 # 定义人物和炸弹标识
 hero = "^"
@@ -29,8 +29,8 @@ ray_end_y = 1
 
 # 随机生成炸弹坐标
 import random
-boom_x = random.randint(1, 160)
-boom_y = random.randint(1, 26)
+boom_x = random.randint(1, 100)
+boom_y = random.randint(1, 22)
 
 # 游戏循环进行入口
 while True:
@@ -39,17 +39,19 @@ while True:
         print("---------- 英雄死亡，游戏结束 ----------")
         break
 
-    # 绘制地图
-    for fence_wide in range(27):   # 控制行
-        if fence_wide == 0:
-            print("---------------------------------------------------------------------------------", end="")
-            print("---------------------------------------------------------------------------------")
-        elif 0 < fence_wide < 26:
-            for fence_length in range(162):  # 控制列
-                if (0 < hero_x < 160) and (0 < hero_y < 26):
+    # 如果在地图范围内(未超出边界)，继续执行
+    if (0 < hero_x < 100) and (0 < hero_y < 22):
+        # 绘制地图
+        for fence_wide in range(24):   # 控制行
+            if fence_wide == 0:
+                print("---------------------------------------------------", end="")
+                print("---------------------------------------------------")
+            elif 0 < fence_wide < 23:
+
+                for fence_length in range(102):  # 控制列
                     if fence_length == 0:
                         print("|", end="")
-                    elif fence_length == 161:
+                    elif fence_length == 101:
                         print("|", end="\n")
                     elif fence_length == hero_x and fence_wide == hero_y:
                         print(hero, end="")
@@ -59,20 +61,22 @@ while True:
                         print(" ", end="")
                     elif (hero_x < fence_length < ray_end_x or hero_x > fence_length > ray_end_x) and fence_wide == hero_y:
                         print("-", end="")
-                    elif (hero_y < fence_wide < ray_end_y or hero_y > fence_wide > ray_end_y) and fence_length == hero_x:
+                    elif (hero_y < fence_wide < ray_end_y or hero_y > fence_wide >= ray_end_y) and fence_length == hero_x:
                         print("|", end="")
                     else:
                         print(" ", end="")
-                else:
-                    print("---------- 超出边界，游戏结束 ----------")
-                    break
+            # 最后一行
+            else:
+                print("---------------------------------------------------", end="")
+                print("---------------------------------------------------")
 
-        else:
-            print("---------------------------------------------------------------------------------", end="")
-            print("---------------------------------------------------------------------------------")
+    # 超出边界
+    else:
+        print("---------- 超出边界，游戏结束 ----------")
+        break
 
     # 射线击中炸弹，游戏结束
-    if (ray_end_x != 1 and ray_end_x != 160) or (ray_end_y != 1 and ray_end_y != 29):
+    if (ray_end_x != 1 and ray_end_x != 100) and (ray_end_y != 1 and ray_end_y != 23):
         print("---------- 击中炸弹，游戏结束 ----------")
         break
     # 关闭射线
@@ -91,8 +95,8 @@ while True:
 
     # 空格实现随机传送
     if operations == " ":
-        boom_x = random.randint(1, 160)
-        boom_y = random.randint(1, 26)
+        boom_x = random.randint(1, 100)
+        boom_y = random.randint(1, 23)
         continue
 
     # 进行攻击
@@ -105,7 +109,7 @@ while True:
                     ray_end_x = boom_x - 1
                     ray_end_y = hero_y
                 else:
-                    ray_end_x = 160
+                    ray_end_x = 100
                     ray_end_y = hero_y
 
             # 朝向为左
@@ -122,17 +126,17 @@ while True:
             case "v":
                 # 根据英雄和炸弹的坐标关系判断射线终点坐标
                 if boom_x == hero_x and boom_y > hero_y:
-                    ray_end_y = boom_x - 1
+                    ray_end_y = boom_y - 1
                     ray_end_x = hero_x
                 else:
-                    ray_end_y = 26
+                    ray_end_y = 23
                     ray_end_x = hero_x
 
             # 朝向为上
             case "^":
                 # 根据英雄和炸弹的坐标关系判断射线终点坐标
                 if boom_x == hero_x and boom_y < hero_y:
-                    ray_end_y = boom_x + 1
+                    ray_end_y = boom_y + 1
                     ray_end_x = hero_x
                 else:
                     ray_end_y = 1
