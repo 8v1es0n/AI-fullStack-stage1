@@ -99,22 +99,25 @@ while True:
             # 5. 图书统计：统计图书总数、库存总量、总价值、价格最高和最低的图书信息。
             print(f"图书总量为: {len(books)}")
 
-            all_inventory = 0
-            # inventory_list = [inventory for author, price, inventory in books.values()]
+            # all_inventory = 0
+            # inventory_list = [info["inventory"] for info in books.values()]
             # for num in inventory_list:
             #     all_inventory += num
             # print(f"库存总量为: {all_inventory}")
 
-            for author, price, inventory in books.values():
-                all_inventory += inventory
+            all_inventory = sum(info["inventory"] for info in books.values())
+            for nama, info in books.items():
+                all_inventory += info["inventory"]
+                # print(info["inventory"])
+                # print(type(info["inventory"]))
             print(f"库存总量为: {all_inventory}")
 
             all_value = 0.0
-            for author, price, inventory in books.values():
-                all_value += price * inventory
+            for info in books.values():
+                all_value += info["price"] * info["inventory"]
             print(f"总价值为: {all_value}")
 
-            price_list = [price for author, price, inventory in books.values()]
+            price_list = [info["price"] for info in books.values()]
 
             max_price = max(price_list)
             min_price = max(price_list)

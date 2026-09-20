@@ -99,22 +99,21 @@ while True:
             # 5. 商品统计：统计商品总数、库存总量、总价值、价格最高和最低的商品信息。
             print(f"商品总量为: {len(products)}")
 
-            all_inventory = 0
-            # inventory_list = [inventory for prod_type, price, inventory in products.values()]
+            # all_inventory = 0
+            # inventory_list = [info["inventory"] for info in products.values())]
             # for num in inventory_list:
             #     all_inventory += num
             # print(f"库存总量为: {all_inventory}")
 
-            for prod_type, price, inventory in products.values():
-                all_inventory += inventory
+            all_inventory = sum(info["inventory"] for info in products.values())
             print(f"库存总量为: {all_inventory}")
 
             all_value = 0.0
-            for prod_type, price, inventory in products.values():
-                all_value += price * inventory
+            for info in products.values():
+                all_value += info["price"] * info["inventory"]
             print(f"总价值为: {all_value}")
 
-            price_list = [price for prod_type, price, inventory in products.values()]
+            price_list = [info["price"] for info in products.values()]
 
             max_price = max(price_list)
             min_price = max(price_list)
