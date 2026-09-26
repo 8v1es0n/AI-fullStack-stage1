@@ -1,27 +1,17 @@
+import json
+
 from day07.practice import *
 
 
 class LibrarySystem:
     def __init__(self):
         # 所有的图书信息 , 类型属于字典  键:书的编号  值:书的对象
-        self.books = {
-            "1001": mod_book.Book("1001", "《Python 教程》", "张三", 5),
-            "1002": mod_book.Book("1002", "《C++ 教程》", "李四", 3),
-            "1003": mod_book.Book("1003", "《Java 教程》", "王五", 2),
-            "1004": mod_book.Book("1004", "《C 教程》", "赵六", 1),
-            "1005": mod_book.Book("1005", "《JavaScript 教程》", "田七", 4)
-        }
+        self.books = {}
+        self.get_books()
 
         # 所有的会员信息  , 类型属于字典  键:会员的卡号  值: 会员对象
-        self.members = {
-            "N001": mod_member.NormalMember("N001", "张三", "668001"),
-            "N002": mod_member.NormalMember("N002", "李四", "668002"),
-            "N003": mod_member.NormalMember("N003", "王五", "668003"),
-            "V001": mod_member.VIPMember("V001", "赵六", "669001", 1),
-            "V002": mod_member.VIPMember("V002", "孙七", "669002", 2),
-            "V003": mod_member.VIPMember("V003", "周八", "669003", 3),
-            "V004": mod_member.VIPMember("V004", "吴九", "669004", 4)
-        }
+        self.members = {}
+        self.get_members()
         # 当前登录会员 , 当登录成功给属性赋值
         self.current_member: mod_member.Member | None = None
 
@@ -48,6 +38,27 @@ class LibrarySystem:
             else:
                 print("当前输入的卡号不存在,请重新输入...")
                 continue
+
+
+    def get_books(self):
+        with open("data/books.txt", "r", encoding="utf-8") as f1:
+            books_list = json.load(f1)
+            for book in books_list:
+                self.books[book["编号"]] = mod_book.Book(book["编号"], book["标题"], book["作者"], book["数量"])
+
+
+    def get_members(self):
+        with open("data/members.txt", "r", encoding="utf-8") as f2:
+            members_list = json.load(f2)
+            for member in members_list:
+                if member["id"].startswith("N"):
+                    self.members[member["id"]] = mod_member.NormalMember(
+                        member["id"], member["name"], member["password"])
+                elif member["id"].startswith("V"):
+                    self.members[member["id"]] = mod_member.VIPMember(
+                        member["id"], member["name"], member["password"], member["vip_level"], )
+                else:
+                    continue
 
 
     def handle_borrow_book(self):       # 借书
@@ -99,25 +110,30 @@ class LibrarySystem:
     def run(self):  # 运行系统
         if self.login():
             while True:
+                # 重新获取数据
+                self.get_books()
+                self.get_members()
                 print("\n1. 借阅图书")
                 print("2. 归还图书")
                 print("3. 查看借阅")
                 print("4. 退出系统")
 
-                choice = input("请选择操作(1-4): ")
-                match choice:
-                    case "1":
-                        self.handle_borrow_book()
-                    case "2":
-                        self.handle_return_book()
-                    case "3":
-                        self.show_borrowed_books()
-                    case "4":
-                        print("退出系统, Bye Bye ~")
-                        break
-                    case _:
-                        print("无效的选项，请重新选择！")
-
+                try:
+                    choice = input("请选择操作(1-4): ")
+                    match choice:
+                        case "1":
+                            self.handle_borrow_book()
+                        case "2":
+                            self.handle_return_book()
+                        case "3":
+                            self.show_borrowed_books()
+                        case "4":
+                            print("退出系统, Bye Bye ~")
+                            break
+                        case _:
+                            print("无效的选项，请重新选择！")
+                except Exception as e:
+                    print("程序运行出错, 请及时联系技术人员检查, 错误信息为: ", e)
 
 
 if __name__ == '__main__':
