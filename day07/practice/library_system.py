@@ -41,14 +41,14 @@ class LibrarySystem:
 
 
     def get_books(self):
-        with open("data/books.txt", "r", encoding="utf-8") as f1:
+        with open("data/books.json", "r", encoding="utf-8") as f1:
             books_list = json.load(f1)
             for book in books_list:
                 self.books[book["编号"]] = mod_book.Book(book["编号"], book["标题"], book["作者"], book["数量"])
 
 
     def get_members(self):
-        with open("data/members.txt", "r", encoding="utf-8") as f2:
+        with open("data/members.json", "r", encoding="utf-8") as f2:
             members_list = json.load(f2)
             for member in members_list:
                 if member["id"].startswith("N"):
@@ -56,7 +56,7 @@ class LibrarySystem:
                         member["id"], member["name"], member["password"])
                 elif member["id"].startswith("V"):
                     self.members[member["id"]] = mod_member.VIPMember(
-                        member["id"], member["name"], member["password"], member["vip_level"], )
+                        member["id"], member["name"], member["password"], member["level"])
                 else:
                     continue
 
