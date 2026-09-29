@@ -1,0 +1,16 @@
+[project]
+name = "ai-partner"
+version = "0.1.0"
+requires-python = ">=3.14"
+dependencies = [
+    "fastapi>=0.141.1",
+    "openai>=3.17.0",
+    "pymysql>=1.2.3",
+    "sqlalchemy>=2.1.1",
+    "uvicorn>=0.53.0",
+]
+
+[[tool.uv.index]]
+url = "https://mirrors.aliyun.com/pypi/simple/"
+default = true
+
