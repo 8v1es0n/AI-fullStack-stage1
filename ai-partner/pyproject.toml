@@ -3,7 +3,10 @@ name = "ai-partner"
 version = "0.1.0"
 requires-python = ">=3.14"
 dependencies = [
+    "aiomysql>=0.3.2",
+    "cryptography>=50.0.2",
     "fastapi>=0.142.2",
+    "greenlet>=3.5.6",
     "openai>=3.24.0",
     "pymysql>=1.2.3",
     "sqlalchemy>=2.1.3",

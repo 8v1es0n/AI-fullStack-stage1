@@ -3,12 +3,17 @@ import json
 import os
 from typing import Any
 
-from fastapi import FastAPI
+from fastapi import FastAPI, Depends
+from fastapi.encoders import jsonable_encoder
 from openai import OpenAI
 from pydantic import BaseModel
 import logging
 from fastapi import Request
+from sqlalchemy import select
+from sqlalchemy.ext.asyncio import AsyncSession
 from starlette.responses import JSONResponse
+
+from db import session_factory, AiPreset
 
 # 配置日志
 logging.basicConfig(
@@ -83,19 +88,28 @@ def exception_handler(request: Request, exc: Exception):
         content={"code": 500, "message": "服务端内部异常", "data": None}
     )
 
+# 抽取获取会话与资源释放到方法
+async def get_session():
+    # 获取会话对象
+    session = session_factory()
+    try:
+        yield session
+    except Exception as e:
+        logging.error(e)
+        session.rollback()
+    finally:
+        await session.close()
+
+
 # 读取预设返回信息
 @app.get("/api/presets")
-async def get_presets():
-
-    # 1 读取人设文件中的数据
-    # 1.1 人设文件不存在,给出提示
-    if os.path.exists(COMPANION_PRESETS_PATH):
-        with open(COMPANION_PRESETS_PATH, "r", encoding="utf-8") as f:
-            preset_list = json.load(f)
-            preset_list.sort(key=lambda preset: preset["sort_order"])
-        return Result(code=200, message = "预设信息加载成功", data=preset_list)
-    else:
-        return Result(code = 404, message = "预设数据资源不存在", data = None)
+async def get_presets(session: AsyncSession = Depends(get_session)):
+    # 查询ai_preset表
+    result = await session.execute(select(AiPreset).order_by(AiPreset.sort_order.asc()))
+    # 获取到的数据进行json序列化
+    preset_list = jsonable_encoder(result.scalars().all())
+    # 返回结果给前端
+    return Result(code=200, message="预设信息加载成功", data=preset_list)
 
 
 # 创建会话
