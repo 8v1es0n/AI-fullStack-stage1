@@ -9,11 +9,11 @@ from openai import OpenAI
 from pydantic import BaseModel
 import logging
 from fastapi import Request
-from sqlalchemy import select
+from sqlalchemy import select, delete, update
 from sqlalchemy.ext.asyncio import AsyncSession
 from starlette.responses import JSONResponse
 
-from db import session_factory, AiPreset
+from db import session_factory, AiPreset, AiSession, AiMessage
 
 # 配置日志
 logging.basicConfig(
@@ -27,11 +27,6 @@ logging.basicConfig(
 
 
 app = FastAPI()
-# 加载人设
-COMPANION_PRESETS_PATH = "./frontend/data/companion_presets.json"
-
-# 会话文件路径
-SESSION_DRI = "frontend/session"
 
 # 系统提示词模板
 SYSTEM_PROMPT_TEMPLATE = """你叫 %s，现在是用户的真实伴侣，请完全代入伴侣角色。
@@ -49,9 +44,6 @@ SYSTEM_PROMPT_TEMPLATE = """你叫 %s，现在是用户的真实伴侣，请完�
     你必须严格遵守上述规则来回复用户。
     """
 
-# 判断会话文件夹是否存在
-if not os.path.exists(SESSION_DRI):
-    os.mkdir(SESSION_DRI)
 
 # 统一响应类
 class Result(BaseModel):
@@ -96,7 +88,8 @@ async def get_session():
         yield session
     except Exception as e:
         logging.error(e)
-        session.rollback()
+        await session.rollback()
+        raise
     finally:
         await session.close()
 
@@ -114,20 +107,13 @@ async def get_presets(session: AsyncSession = Depends(get_session)):
 
 # 创建会话
 @app.post("/api/sessions")
-async def create_sessions(sessions : RequestSessions):
-    # 1. 组织存储的内容
-    # 会话名字,当前时间
+async def create_sessions(sessions : RequestSessions, session: AsyncSession = Depends(get_session)):
     session_name = datetime.now().strftime("%Y-%m-%d-%H-%M-%S")
-    session_dict = {
-        "session_name" : session_name,
-        "nick_name" : sessions.nick_name,
-        "nature" : sessions.nature,
-        "messages" : []
-    }
-
-    # 2. 把组织好的数据写进文件
-    with open(f"{SESSION_DRI}/{session_name}.json", "w", encoding="utf-8") as f:
-        json.dump(session_dict, f, ensure_ascii = False, indent = 4)
+    ai_session = AiSession(session_name=session_name, nick_name=sessions.nick_name, nature=sessions.nature,
+                           create_time=datetime.now(), update_time=datetime.now())
+    session.add(ai_session)
+    # 提交修改
+    await session.commit()
 
     # 3. 给前端响应
     return Result(code = 200, message = "创建会话成功", data = session_name)
@@ -135,62 +121,86 @@ async def create_sessions(sessions : RequestSessions):
 
 # 删除会话
 @app.delete("/api/sessions/{session_name}")
-async def delete_sessions(session_name : str):
-    if not os.path.exists(f"{SESSION_DRI}/{session_name}.json"):
-        return Result(code=404, message="未找到会话信息", data=None)
+async def delete_sessions(session_name : str, session: AsyncSession = Depends(get_session)):
+    # 查询基本信息
+    session_result = await session.execute(select(AiSession).where(AiSession.session_name == session_name))
+    ai_session = session_result.scalars().one()
 
-    # 删除会话文件
-    os.remove(f"{SESSION_DRI}/{session_name}.json")
+    # 删除该条对应的会话内容
+    await session.execute(delete(AiMessage).where(AiMessage.session_id == ai_session.id))
+    # 删除会话基本信息
+    await session.execute(delete(AiSession).where(AiSession.id == ai_session.id))
+    # 提交事务
+    await session.commit()
 
     # 3. 给前端响应
     return Result(code = 200, message = "删除会话成功", data = None)
 
 # 获取会话列表
 @app.get("/api/sessions")
-async def get_sessions_list():
+async def get_sessions_list(session: AsyncSession = Depends(get_session)):
     logging.info("获取会话列表")
-    if not os.path.exists(SESSION_DRI) or len(os.listdir(SESSION_DRI)) == 0:
-        return Result(code=404, message="会话列表为空", data = None)
-
-    session_list = []
-    for name in os.listdir(SESSION_DRI):
-        if name.endswith(".json"):
-            # 获取文件名,并存到列表中
-            name = name.rstrip(".json")
-            session_list.append(name)
-    # 降序排序
-    session_list.sort(reverse=True)
+    session_result = await session.execute(select(AiSession.session_name)
+                                           .order_by(AiSession.session_name.desc()))
+    session_list = session_result.scalars().all()
     return Result(code=200, message="会话列表加载成功", data = session_list)
 
 
 # 获取指定会话
 @app.get("/api/sessions/{session_name}", summary="获取指定会话信息")
-async def get_sessions_byid(session_name : str):
-    if not os.path.exists(f"{SESSION_DRI}/{session_name}.json"):
-        return Result(code=404, message="未找到会话信息", data=None)
+async def get_sessions_byid(session_name : str, session: AsyncSession = Depends(get_session)):
+    # 获取会话基本数据
+    session_result = await session.execute(select(AiSession).where(AiSession.session_name == session_name))
+    ai_session = session_result.scalars().one()
 
-    # 读取文件
-    with open(f"{SESSION_DRI}/{session_name}.json", "r", encoding="utf-8") as f:
-        session_data = json.load(f)
-        return Result(code = 200, message = "加载会话成功", data = session_data)
+    # 获取会话内容
+    message_result = await session.execute(select(AiMessage).where(AiMessage.session_id == ai_session.id))
+    ai_messages = message_result.scalars().all()
+
+    #3.组装数据
+    session_data={
+        "nick_name":ai_session.nick_name,
+        "nature":ai_session.nature,
+        "session_name":ai_session.session_name,
+        "messages":[{"role":i.role,"content":i.content} for i in ai_messages]
+    }
+    # 将数据返回给前端
+    return Result(code = 200, message = "加载会话成功", data = session_data)
 
 
 # 聊天功能
 @app.post("/api/chat")
-async def ai_chat(chat : RequestChat):
-    # 1. 从文件中读取会话
-    with open(f"{SESSION_DRI}/{chat.session_name}.json", "r", encoding="utf-8") as f:
-        # 加载所有记录
-        chat_dict = json.load(f)
+async def ai_chat(chat : RequestChat, session: AsyncSession = Depends(get_session)):
+    # 从数据库中读取会话基本信息
+    session_result = await session.execute(select(AiSession).where(AiSession.session_name == chat.session_name))
+    ai_session = session_result.scalars().one()
 
-        history_list = chat_dict["messages"]
+    # 从数据库中读取会话内容
+    message_result = await session.execute(select(AiMessage).where(AiMessage.session_id == ai_session.id))
+    ai_messages = message_result.scalars().all()
 
     # 组织角色信息
-    if len(history_list) == 0:
-        history_list.append({"role": "system", "content": SYSTEM_PROMPT_TEMPLATE % (chat.nick_name, chat.nature)})
+    # 跟新系统提示词
+    if len(ai_messages) == 0:
+        session.add(AiMessage(session_id= ai_session.id, role= "system",
+                              content= SYSTEM_PROMPT_TEMPLATE % (chat.nick_name, chat.nature),
+                              create_time=datetime.now()))
     else:
-        history_list[0] = {"role": "system", "content": SYSTEM_PROMPT_TEMPLATE % (chat.nick_name, chat.nature)}
-    history_list.append({"role": "user", "content": chat.message})
+        await session.execute(update(AiMessage)
+                              .where(AiMessage.session_id == ai_session.id, AiMessage.role == "system")
+                              .values(content= SYSTEM_PROMPT_TEMPLATE % (chat.nick_name, chat.nature)))
+    # 添加用户提示词
+    session.add(AiMessage(session_id= ai_session.id, role= "user", content= chat.message, create_time=datetime.now()))
+    # 同步变更到数据库
+    await session.flush()
+
+    # 读取所有会话内容, 查询ai_message表
+    result = await session.execute(select(AiMessage.role, AiMessage.content)
+                                   .where(AiMessage.session_id == ai_session.id)
+                                   .order_by(AiMessage.create_time.asc()))
+    # 获取到的数据进行json序列化
+    messages = result.all()
+    history_list = [{"role": msg.role, "content": msg.content} for msg in messages]
 
     client = OpenAI(
         api_key=os.environ.get('DEEPSEEK_API_KEY'),
@@ -204,17 +214,20 @@ async def ai_chat(chat : RequestChat):
         extra_body={"thinking": {"type": "disabled"}}
     )
     assistant = response.choices[0].message.content
+    # 添加大模型返回的信息
+    session.add(AiMessage(session_id= ai_session.id, role= "assistant", content= assistant, create_time=datetime.now()))
 
-    history_list.append({"role": "assistant", "content":assistant})
-    chat_dict["messages"] = history_list
-    chat_dict["nick_name"] = chat.nick_name
-    chat_dict["nature"] = chat.nature
+    # 更新人设信息
+    await session.execute(update(AiSession).where(AiSession.session_name == chat.session_name)
+                          .values(nick_name=chat.nick_name, nature=chat.nature, update_time=datetime.now()))
+    # 提交数据
+    await session.commit()
 
-    with open(f"{SESSION_DRI}/{chat.session_name}.json","w",encoding="utf-8") as f:
-        json.dump(chat_dict,f,ensure_ascii=False,indent=4)
     return Result(code = 200, message = "对话信息返回成功", data=assistant)
 
-    # 启动FastAPi服务
+
+
+# 启动服务
 if __name__ == '__main__':
     import uvicorn
     uvicorn.run(app, host="192.168.16.170", port=8000)
