@@ -1,0 +1,25 @@
+ai-partner/                     # 项目根目录
+├─ .venv/                       # Python虚拟环境
+├─ pyproject.toml               # uv项目配置
+├─ uv.lock                      # uv依赖锁文件
+├─ main.py                      # FastAPI入口，注册路由
+└─ app/                         # 业务主包
+   ├─ __init__.py
+   ├─ db/                       # 数据库模块
+   │  ├─ __init__.py
+   │  ├─ database.py            # SQLAlchemy引擎、会话工厂、Base基类、获取会话对象
+   │  └─ models.py              # ORM数据库模型
+   ├─ schemas/                  # 数据校验模块
+   │  ├─ __init__.py
+   │  └─ schemas.py             # 业务Pydantic模型
+   ├─ utils/                    # 通用工具模块
+   │  ├─ __init__.py
+   │  └─ utils.py               # 会话名称工具函数
+   ├─ ai/                       # AI配置模块
+   │  ├─ __init__.py
+   │  └─ config.py              # OpenAI客户端、系统提示词
+   └─ routers/                  # API路由模块
+      ├─ __init__.py
+      ├─ presets.py             # 伴侣预设接口
+      ├─ sessions.py            # 会话管理接口
+      └─ chat.py                # AI聊天接口

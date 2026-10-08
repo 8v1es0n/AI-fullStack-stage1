@@ -1,14 +1,9 @@
+from .database import Base
+
 from datetime import datetime
 from sqlalchemy import Integer, String, DateTime
-from sqlalchemy.ext.asyncio import create_async_engine, async_sessionmaker
-from sqlalchemy.orm import Mapped, mapped_column, DeclarativeBase
+from sqlalchemy.orm import Mapped, mapped_column
 
-# 1. 创建引擎(支持异步操作)
-engine = create_async_engine("mysql+aiomysql://root:1234@localhost:3306/mydb?charset=utf8mb4", echo=True)
-
-# 2. 声明模型类
-class Base(DeclarativeBase):
-    pass
 
 class AiPreset(Base):
     """伴侣预设表"""
@@ -52,7 +47,3 @@ class AiMessage(Base):
 
     def __repr__(self):
         return f"AiMessage(id={self.id}, session_id={self.session_id}, role={self.role}, content={self.content}, create_time={self.create_time})"
-
-# 3. 会话工厂(支持异步操作)
-session_factory = async_sessionmaker(engine)
-
